@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -17,8 +19,26 @@ const userSchema = new mongoose.Schema(
       required: true
     },
 
+    status:{
+      type: String,
+      enum:["INVITED","ONBOARDED"],
+      default:"INVITED"
+    },
+
+    emailVerified: {
+      type: Boolean,
+      default: false
+    },
+
     resetPasswordToken: String,
-    resetPasswordExpires: Date
+    resetPasswordExpires: Date,
+
+    forgotPasswordToken: String,
+    forgotPasswordExpires: Date,
+
   },
+  
   { timestamps: true }
 );
+
+export default mongoose.model("User", userSchema);
