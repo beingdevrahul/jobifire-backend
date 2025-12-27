@@ -83,10 +83,8 @@ export const resendResetLink = async (req, res) => {
     const { clientId } = req.params;
 
     
-    const user = await User.findOne({
-      _id: clientId,
-      role: "CLIENT"
-    });
+    const user = await Client.findById(clientId);
+
 
     if (!user) {
       return res.status(404).json({
@@ -194,7 +192,7 @@ export const resendEmployeeInvite=async(req,res)=>{
     user.resetPasswordExpires=Date.now()+7*24*60*60*1000;
     await user.save();
 
-     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
      await sendEmail({
       to: user.email,
@@ -214,17 +212,34 @@ export const resendEmployeeInvite=async(req,res)=>{
   }
 
 };
-
 export const getEmployees = async (req, res) => {
   try {
-    const employees = await User.find({
-      role: "EMPLOYEE",
-      status: "ONBOARDED"
-    }).select("_id email");
+    const { status } = req.query;
 
-    res.json(employees);
+    // base filter
+    const filter = {
+      role: "EMPLOYEE"
+    };
+
+    // apply status filter if provided
+    if (status && status !== "ALL") {
+      filter.status = status.toUpperCase();
+    }
+
+    const employees = await User.find(filter)
+      .select("_id email status")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      count: employees.length,
+      employees
+    });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: "Server error",
+      error: err.message
+    });
   }
 };
 

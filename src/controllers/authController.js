@@ -1,6 +1,67 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+import sendEmail from "../utils/sendEmail.js";
+import jwt from "jsonwebtoken";
+
+
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+   
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid email or password"
+      });
+    }
+
+    
+    if (user.status !== "ONBOARDED") {
+      return res.status(403).json({
+        message: "Account not active. Please complete onboarding."
+      });
+    }
+
+    
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Invalid email or password"
+      });
+    }
+
+    
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+   
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
 
 export const resetPassword = async (req, res) => {
     try {
@@ -79,8 +140,8 @@ export const forgotPassword = async (req, res) => {
 
 export const resetForgotPassword = async (req, res) => {
   try {
-    const { token } = req.query;
-    const { newPassword, confirmPassword } = req.body;
+
+    const { token, newPassword, confirmPassword } = req.body;
 
     if (newPassword !== confirmPassword) {
       return res.status(400).json({
