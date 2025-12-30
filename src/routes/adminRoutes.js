@@ -3,7 +3,7 @@ import {
   createClient,
   resendResetLink,
   createEmployee,
-  resendEmployeeInvite,getEmployees
+  resendEmployeeInvite,getEmployees,getAllClients, getClientById
 } from "../controllers/adminController.js";
 
 import authMiddleware from "../middlewares/authMiddleware.js";
@@ -46,6 +46,23 @@ router.get(
   roleMiddleware("ADMIN"),
   getEmployees
 );
+
+router.get(
+  "/clients",
+  //authMiddleware,
+  //roleMiddleware("ADMIN"),
+  getAllClients
+);
+
+router.get(
+  "/clients/:clientId",
+ // authMiddleware,
+ // roleMiddleware("ADMIN"),
+  getClientById
+);
+
+
+
 
 
 export default router;

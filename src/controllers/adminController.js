@@ -243,3 +243,67 @@ export const getEmployees = async (req, res) => {
   }
 };
 
+export const getAllClients = async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    const filter = { role: "CLIENT" };
+    if (status) filter.status = status;
+
+    const clients = await User.find(filter)
+      .select("-password")
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: clients.length,
+      data: clients
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch clients",
+      error: error.message
+    });
+  }
+};
+
+export const getClientById = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    // 1️⃣ Find user and ensure it's a CLIENT
+    const user = await User.findOne({
+      _id: clientId,
+      role: "CLIENT"
+    }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Client not found"
+      });
+    }
+
+    // 2️⃣ Find client profile
+    const clientProfile = await Client.findOne({
+      userId: clientId
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user,
+        clientProfile
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch client details",
+      error: error.message
+    });
+  }
+};
+
+
