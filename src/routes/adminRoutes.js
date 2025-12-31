@@ -8,10 +8,11 @@ import {
 
 import authMiddleware from "../middlewares/authMiddleware.js";
 import roleMiddleware from "../middlewares/roleMiddleware.js";
+import { getJobSearchCriteriaByClientId } from "../controllers/jobSearchController.js";
 
 const router = express.Router();
 
-// Create client + send onboarding reset link
+
 router.post(
   "/client",
   authMiddleware,
@@ -19,7 +20,7 @@ router.post(
   createClient
 );
 
-// Resend client reset password link
+
 router.post(
   "/client/resend/:clientId",
   authMiddleware,
@@ -60,6 +61,13 @@ router.get(
  // roleMiddleware("ADMIN"),
   getClientById
 );
+
+router.get(
+  "/job-search/:clientId",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getJobSearchCriteriaByClientId
+)
 
 
 

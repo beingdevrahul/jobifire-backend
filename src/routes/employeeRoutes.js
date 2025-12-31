@@ -5,6 +5,7 @@ import {
   getMyClients,
   getClientDetailsForEmployee
 } from "../controllers/employeeController.js";
+import { getJobSearchCriteriaByClientId } from "../controllers/jobSearchController.js";
 
 const router = express.Router();
 
@@ -22,5 +23,13 @@ router.get(
   roleMiddleware("EMPLOYEE"),
   getClientDetailsForEmployee
 );
+
+router.get(
+  "/job-search/:clientId",
+  authMiddleware,
+  roleMiddleware("EMPLOYEE"),
+  getJobSearchCriteriaByClientId
+);
+
 
 export default router;
