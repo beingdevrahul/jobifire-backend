@@ -95,6 +95,46 @@ export const resetPassword = async (req, res) => {
 }
 
 
+export const getResetPasswordInfo = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        message: "Reset token is required"
+      });
+    }
+     const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    }).select("email role status");
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired reset token"
+      });
+    }
+
+    return res.status(200).json({
+      email: user.email,
+      role: user.role,
+      status: user.status
+    });
+
+  } catch (error) {
+    console.error("Reset info error:", error);
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;

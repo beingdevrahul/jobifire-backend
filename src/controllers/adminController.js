@@ -70,7 +70,8 @@ export const createClient = async (req, res) => {
 
     res.status(201).json({
       message: "Client created and reset link sent",
-      clientId: client._id
+      clientId: client._id,
+      URL: resetUrl
     });
 
   } catch (error) {
@@ -115,7 +116,8 @@ export const resendResetLink = async (req, res) => {
     });
 
     res.status(200).json({
-      message: "Reset password link resent successfully"
+      message: "Reset password link resent successfully",
+      resetUrl
     });
 
   } catch (error) {
@@ -135,7 +137,7 @@ export const createEmployee = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: "Email already exists" });
     }
-    const user = await User.create({
+   const user = await User.create({
       email,
       role: "EMPLOYEE"
     });
@@ -146,12 +148,14 @@ export const createEmployee = async (req, res) => {
       phone,
       email
     });
+    
 
     const rawtoken=crypto.randomBytes(32).toString("hex");
     const hashedToken=crypto.createHash("sha256").update(rawtoken).digest("hex");
 
     user.resetPasswordToken=hashedToken;
     user.resetPasswordExpires=Date.now()+7*24*60*60*1000;
+
     await user.save();
 
     const resetUrl=`${process.env.FRONTEND_URL}/reset-password/?token=${rawtoken}`;
@@ -165,7 +169,8 @@ export const createEmployee = async (req, res) => {
     `});
     res.status(201).json({
       message: "Employee created and set password link sent",
-      employeeId:employee._id
+      employeeId:employee._id,
+      URL:resetUrl,
     });
   }
 
