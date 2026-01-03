@@ -41,8 +41,16 @@ export const login = async (req, res) => {
         role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "1d" }
     );
+       
+// set HTTP-only cookie
+res.cookie("token", token, {
+  httpOnly: true,
+  maxAge: 24 * 60 * 60 * 1000, // 1 day
+  sameSite: "lax",    
+   path : "/" ,       // works on localhost
+});
 
    
     res.status(200).json({

@@ -3,13 +3,14 @@ import User from "../models/User.js";
 
 const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // 1. Check BOTH Cookies and Authorization Header
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({ message: "Token missing" });
     }
 
-    const token = authHeader.split(" ")[1];
+    // 2. Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id).select("-password");
@@ -22,7 +23,7 @@ const authMiddleware = async (req, res, next) => {
       return res.status(403).json({ message: "Account is disabled" });
     }
 
-    // ✅ SINGLE SOURCE OF TRUTH
+    // ✅ Attach user to request
     req.user = {
       id: user._id,
       role: user.role,

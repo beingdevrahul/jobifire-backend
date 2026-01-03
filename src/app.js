@@ -1,7 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import cookieParser from "cookie-parser"; // ✅ ADD THIS
 import connectDB from "./config/db.js";
+
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
@@ -9,7 +11,7 @@ import clientRoutes from "./routes/clientRoutes.js";
 
 dotenv.config();
 connectDB();
-
+ 
 const app = express();
 
 app.use(
@@ -20,6 +22,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(cookieParser()); // ✅ MUST be BEFORE routes
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
