@@ -221,23 +221,39 @@ export const getEmployees = async (req, res) => {
   try {
     const { status } = req.query;
 
-    // base filter
-    const filter = {
+    // build user filter
+    const userFilter = {
       role: "EMPLOYEE"
     };
 
-    // apply status filter if provided
     if (status && status !== "ALL") {
-      filter.status = status.toUpperCase();
+      userFilter.status = status.toUpperCase();
     }
 
-    const employees = await User.find(filter)
-      .select("_id email status")
+    const employees = await Employee.find()
+      .populate({
+        path: "userId",
+        match: userFilter,
+        select: "email role status"
+      })
+      .select("firstName lastName phone userId")
       .sort({ createdAt: -1 });
 
+    // remove employees whose user didn't match filter
+    const formatted = employees
+      .filter(emp => emp.userId)
+      .map(emp => ({
+        _id: emp.userId._id,
+        name: `${emp.firstName} ${emp.lastName}`,
+        email: emp.userId.email,
+        phone: emp.phone,
+        role: emp.userId.role,
+        status: emp.userId.status
+      }));
+
     res.status(200).json({
-      count: employees.length,
-      employees
+      count: formatted.length,
+      employees: formatted
     });
 
   } catch (err) {
@@ -247,23 +263,66 @@ export const getEmployees = async (req, res) => {
     });
   }
 };
-
 export const getAllClients = async (req, res) => {
   try {
     const { status } = req.query;
 
-    const filter = { role: "CLIENT" };
-    if (status) filter.status = status;
+    const matchStage = {
+      role: "CLIENT"
+    };
 
-    const clients = await User.find(filter)
-      .select("-password")
-      .lean();
+    if (status && status !== "ALL") {
+      matchStage.status = status.toUpperCase();
+    }
+
+    const clients = await User.aggregate([
+      {
+        $match: matchStage
+      },
+      {
+        $lookup: {
+          from: "clients",
+          localField: "email",
+          foreignField: "email",
+          as: "clientProfile"
+        }
+      },
+      {
+        $unwind: "$clientProfile"
+      },
+      {
+        $project: {
+          _id: 1,
+          email: 1,
+          role: 1,
+          status: 1,
+          name: {
+            $concat: [
+              "$clientProfile.firstName",
+              " ",
+              "$clientProfile.lastName"
+            ]
+          },
+          phone: "$clientProfile.phone",
+          country: "$clientProfile.country",
+          state: "$clientProfile.state",
+          timeZone: "$clientProfile.timeZone",
+          gender: "$clientProfile.gender",
+          assignedEmployee: "$clientProfile.assignedEmployee",
+          createdAt: 1
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      }
+    ]);
 
     res.status(200).json({
       success: true,
       count: clients.length,
       data: clients
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -273,11 +332,13 @@ export const getAllClients = async (req, res) => {
   }
 };
 
+
+
 export const getClientById = async (req, res) => {
   try {
     const { clientId } = req.params;
 
-    // 1️⃣ Find user and ensure it's a CLIENT
+    
     const user = await User.findOne({
       _id: clientId,
       role: "CLIENT"
@@ -290,18 +351,37 @@ export const getClientById = async (req, res) => {
       });
     }
 
-    // 2️⃣ Find client profile
+    
     const clientProfile = await Client.findOne({
-      userId: clientId
+      email: user.email
     });
 
+    if (!clientProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Client profile not found"
+      });
+    }
+
+    
     res.status(200).json({
       success: true,
       data: {
-        user,
-        clientProfile
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        name: `${clientProfile.firstName} ${clientProfile.lastName}`,
+        phone: clientProfile.phone,
+        country: clientProfile.country,
+        state: clientProfile.state,
+        timeZone: clientProfile.timeZone,
+        gender: clientProfile.gender,
+        assignedEmployee: clientProfile.assignedEmployee,
+        createdAt: user.createdAt
       }
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -310,5 +390,3 @@ export const getClientById = async (req, res) => {
     });
   }
 };
-
-
