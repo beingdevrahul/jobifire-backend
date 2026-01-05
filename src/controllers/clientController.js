@@ -1,71 +1,109 @@
+import ClientDocument from "../models/ClientDocument.js";
+import { generateUploadUrl } from "../utils/s3.js";
+import path from "path";
+import { generateDownloadUrl } from "../utils/s3.js";
 
+const BLOCKED_EXTENSIONS = ["zip"];
+const BLOCKED_MIME_TYPES = [
+  "application/zip",
+  "application/x-zip-compressed",
+  "multipart/x-zip"
+];
 
-
-export const createJobSearchCriteria = async (req, res) => {
+export const generateClientUploadUrl = async (req, res) => {
   try {
-    const clientId = req.user.id;
+    const { clientId } = req.params;
+    const { fileName, fileType } = req.body;
 
-    const existing = await JobSearchCriteria.findOne({ clientId });
-    if (existing) {
+    if (!fileName || !fileType) {
       return res.status(400).json({
-        message: "Job search criteria already exists"
+        success: false,
+        message: "fileName and fileType are required"
+      });
+    }
+    const extension = path.extname(fileName).replace(".", "").toLowerCase();
+    if (BLOCKED_EXTENSIONS.includes(extension)) {
+      return res.status(400).json({
+        success: false,
+        message: "ZIP files are not allowed"
       });
     }
 
-    const criteria = await JobSearchCriteria.create({
+    
+    if (BLOCKED_MIME_TYPES.includes(fileType)) {
+      return res.status(400).json({
+        success: false,
+        message: "ZIP files are not allowed"
+      });
+    }
+
+    const { uploadUrl, key } = await generateUploadUrl({
+      fileName,
+      contentType: fileType,
+      clientId
+    });
+
+    
+    const document = await ClientDocument.create({
       clientId,
-      ...req.body
+      uploadedBy: req.user.id,
+      fileName,
+      fileType,
+      s3Key: key
     });
 
-    res.status(201).json({
-      message: "Job search criteria created successfully",
-      data: criteria
+    res.status(200).json({
+      success: true,
+      data: {
+        uploadUrl,
+        documentId: document._id,
+        s3Key: key
+      }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate upload URL",
+      error: error.message
+    });
   }
 };
-
-export const getJobSearchCriteria = async (req, res) => {
+export const getClientDocumentViewUrl = async (req, res) => {
   try {
-    const clientId = req.user.id;
+    const { clientId, documentId } = req.params;
 
-    const criteria = await JobSearchCriteria.findOne({ clientId });
+    // 1️⃣ Fetch document
+    const document = await ClientDocument.findOne({
+      _id: documentId,
+      clientId,
+      status: "UPLOADED"
+    });
 
-    if (!criteria) {
+    if (!document) {
       return res.status(404).json({
-        message: "No job search criteria found"
+        success: false,
+        message: "Document not found"
       });
     }
 
-    res.status(200).json({
-      data: criteria
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-export const updateJobSearchCriteria = async (req, res) => {
-  try {
-    const clientId = req.user.id;
-
-    const updated = await JobSearchCriteria.findOneAndUpdate(
-      { clientId },
-      { $set: req.body },
-      { new: true }
-    );
-
-    if (!updated) {
-      return res.status(404).json({
-        message: "Job search criteria not found"
-      });
-    }
+    
+    const viewUrl = await generateDownloadUrl(document.s3Key);
 
     res.status(200).json({
-      message: "Job search criteria updated successfully",
-      data: updated
+      success: true,
+      data: {
+        documentId: document._id,
+        fileName: document.fileName,
+        fileType: document.fileType,
+        viewUrl
+      }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate document view URL",
+      error: error.message
+    });
   }
 };
+
