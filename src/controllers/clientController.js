@@ -70,11 +70,19 @@ export const generateClientUploadUrl = async (req, res) => {
 };
 export const getClientDocumentViewUrl = async (req, res) => {
   try {
-    const { clientId, documentId } = req.params;
+    const { clientId } = req.params;
+    const { s3Key } = req.query; 
 
-    // 1️⃣ Fetch document
+    if (!s3Key) {
+      return res.status(400).json({
+        success: false,
+        message: "s3Key is required"
+      });
+    }
+
+    
     const document = await ClientDocument.findOne({
-      _id: documentId,
+      s3Key,
       clientId,
       status: "UPLOADED"
     });
@@ -82,22 +90,23 @@ export const getClientDocumentViewUrl = async (req, res) => {
     if (!document) {
       return res.status(404).json({
         success: false,
-        message: "Document not found"
+        message: "Document not found or access denied"
       });
     }
 
-    
-    const viewUrl = await generateDownloadUrl(document.s3Key);
+   
+    const viewUrl = await generateDownloadUrl(s3Key);
 
     res.status(200).json({
       success: true,
       data: {
-        documentId: document._id,
+        s3Key: document.s3Key,
         fileName: document.fileName,
         fileType: document.fileType,
         viewUrl
       }
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -106,4 +115,3 @@ export const getClientDocumentViewUrl = async (req, res) => {
     });
   }
 };
-

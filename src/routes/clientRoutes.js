@@ -24,7 +24,7 @@ router.post(
   generateClientUploadUrl
 );
 router.get(
-  "/clients/:clientId/documents/:documentId/view-url",
+  "/clients/:clientId/documents/view-url",
   authMiddleware,
   roleMiddleware("ADMIN", "EMPLOYEE"),
   getClientDocumentViewUrl

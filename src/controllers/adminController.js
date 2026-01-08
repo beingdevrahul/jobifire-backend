@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Client from "../models/Client.js";
 import sendEmail from "../utils/sendEmail.js";
 import Employee from "../models/Employee.js";
+import { resetPassword } from "./authController.js";
 
 export const createClient = async (req, res) => {
   try {
@@ -45,12 +46,12 @@ export const createClient = async (req, res) => {
 
     
     const token = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    //const hashedToken = crypto
+      // .createHash("sha256")
+      // .update(token)
+      // .digest("hex");
 
-    user.resetPasswordToken = hashedToken;
+    user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 7 * 24 * 60 * 60 * 1000;
     await user.save();
 
@@ -95,12 +96,12 @@ export const resendResetLink = async (req, res) => {
 
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    //const hashedToken = crypto
+      // .createHash("sha256")
+      // .update(resetToken)
+      // .digest("hex");
 
-    user.resetPasswordToken = hashedToken;
+    user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
     await user.save();
@@ -151,9 +152,9 @@ export const createEmployee = async (req, res) => {
     
 
     const rawtoken=crypto.randomBytes(32).toString("hex");
-    const hashedToken=crypto.createHash("sha256").update(rawtoken).digest("hex");
+    //const hashedToken=crypto.createHash("sha256").update(rawtoken).digest("hex");
 
-    user.resetPasswordToken=hashedToken;
+    user.resetPasswordToken=rawtoken;
     user.resetPasswordExpires=Date.now()+7*24*60*60*1000;
 
     await user.save();
@@ -192,8 +193,8 @@ export const resendEmployeeInvite=async(req,res)=>{
     }
     const resetToken=crypto.randomBytes(32).toString("hex");
 
-    const hashedToken=crypto.createHash("sha256").update(resetToken).digest("hex");
-    user.resetPasswordToken=hashedToken;
+   // const hashedToken=crypto.createHash("sha256").update(resetToken).digest("hex");
+    user.resetPasswordToken=resetToken;
     user.resetPasswordExpires=Date.now()+7*24*60*60*1000;
     await user.save();
 
@@ -221,7 +222,6 @@ export const getEmployees = async (req, res) => {
   try {
     const { status } = req.query;
 
-    // build user filter
     const userFilter = {
       role: "EMPLOYEE"
     };
@@ -234,12 +234,11 @@ export const getEmployees = async (req, res) => {
       .populate({
         path: "userId",
         match: userFilter,
-        select: "email role status"
+        select: "email role status resetPasswordToken"
       })
       .select("firstName lastName phone userId")
       .sort({ createdAt: -1 });
 
-    // remove employees whose user didn't match filter
     const formatted = employees
       .filter(emp => emp.userId)
       .map(emp => ({
@@ -248,7 +247,8 @@ export const getEmployees = async (req, res) => {
         email: emp.userId.email,
         phone: emp.phone,
         role: emp.userId.role,
-        status: emp.userId.status
+        status: emp.userId.status,
+        resetPasswordToken: emp.userId.resetPasswordToken
       }));
 
     res.status(200).json({
@@ -263,6 +263,8 @@ export const getEmployees = async (req, res) => {
     });
   }
 };
+
+
 export const getAllClients = async (req, res) => {
   try {
     const { status } = req.query;
@@ -309,6 +311,8 @@ export const getAllClients = async (req, res) => {
           timeZone: "$clientProfile.timeZone",
           gender: "$clientProfile.gender",
           assignedEmployee: "$clientProfile.assignedEmployee",
+          resetPasswordToken: 1,
+         
           createdAt: 1
         }
       },
