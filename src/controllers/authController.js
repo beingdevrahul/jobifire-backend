@@ -76,10 +76,10 @@ export const resetPassword = async (req, res) => {
         const {token}= req.params;
         const {newPassword}= req.body;
 
-        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+        //const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
         const user=await User.findOne({
-            resetPasswordToken:hashedToken,
+            resetPasswordToken:token,
             resetPasswordExpires:{$gt:Date.now()}
         });
 
