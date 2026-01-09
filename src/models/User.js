@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema(
       enum:["INVITED","ONBOARDED"],
       default:"INVITED"
     },
+     isActive: {
+      type: Boolean,
+      default: true
+    },
 
     emailVerified: {
       type: Boolean,

@@ -394,3 +394,51 @@ export const getClientById = async (req, res) => {
     });
   }
 };
+
+export const deactivateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    
+    if (user.role === "ADMIN") {
+      return res.status(400).json({
+        success: false,
+        message: "Admin account cannot be deactivated"
+      });
+    }
+
+   
+    if (!user.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "User already deactivated"
+      });
+    }
+
+    
+    user.isActive = false;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `${user.role} deactivated successfully`
+    });
+
+  } catch (error) {
+    console.error("Deactivate user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to deactivate user"
+    });
+  }
+};
+

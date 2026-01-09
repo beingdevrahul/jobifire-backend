@@ -3,7 +3,7 @@ import {
   createClient,
   resendResetLink,
   createEmployee,
-  resendEmployeeInvite,getEmployees,getAllClients, getClientById
+  resendEmployeeInvite,getEmployees,getAllClients, getClientById,deactivateUser
 } from "../controllers/adminController.js";
 
 import authMiddleware from "../middlewares/authMiddleware.js";
@@ -50,15 +50,15 @@ router.get(
 
 router.get(
   "/clients",
-  //authMiddleware,
-  //roleMiddleware("ADMIN"),
+  authMiddleware,
+  roleMiddleware("ADMIN"),
   getAllClients
 );
 
 router.get(
   "/clients/:clientId",
- // authMiddleware,
- // roleMiddleware("ADMIN"),
+  authMiddleware,
+  roleMiddleware("ADMIN"),
   getClientById
 );
 
@@ -68,6 +68,13 @@ router.get(
   roleMiddleware("ADMIN"),
   getJobSearchCriteriaByClientId
 )
+
+router.patch(
+  "/users/:userId/deactivate",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  deactivateUser
+);
 
 
 

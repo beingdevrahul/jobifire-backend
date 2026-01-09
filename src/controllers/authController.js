@@ -23,7 +23,15 @@ export const login = async (req, res) => {
       return res.status(403).json({
         message: "Account not active. Please complete onboarding."
       });
+
     }
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: "Account is deactivated."
+      });
+    }
+
+    
 
     
     const isMatch = await bcrypt.compare(password, user.password);
@@ -112,13 +120,13 @@ export const getResetPasswordInfo = async (req, res) => {
         message: "Reset token is required"
       });
     }
-     const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    //  const hashedToken = crypto
+    //   .createHash("sha256")
+    //   .update(token)
+    //   .digest("hex");
 
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
+      resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() }
     }).select("email role status");
 
@@ -156,12 +164,12 @@ export const forgotPassword = async (req, res) => {
     }
 
     const rawToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(rawToken)
-      .digest("hex");
+    //const hashedToken = crypto
+     // .createHash("sha256")
+     // .update(rawToken)
+      //.digest("hex");
 
-    user.forgotPasswordToken = hashedToken;
+    user.forgotPasswordToken = rawToken;
     user.forgotPasswordExpires = Date.now() + 30 * 60 * 1000; // 30 mins
     await user.save();
 
@@ -197,13 +205,13 @@ export const resetForgotPassword = async (req, res) => {
       });
     }
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    // const hashedToken = crypto
+    //   .createHash("sha256")
+    //   .update(token)
+    //   .digest("hex");
 
     const user = await User.findOne({
-      forgotPasswordToken: hashedToken,
+      forgotPasswordToken: token,
       forgotPasswordExpires: { $gt: Date.now() }
     });
 
