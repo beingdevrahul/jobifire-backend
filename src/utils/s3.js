@@ -20,7 +20,7 @@ export const generateUploadUrl = async ({
   contentType,
   clientId
 }) => {
-  const key = `uploads/clients/${clientId}/${Date.now()}-${fileName}`;
+  const key = `uploads/clients/${clientId}/${Date.now()}-${fileName}/$`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET,

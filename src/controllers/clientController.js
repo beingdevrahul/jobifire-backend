@@ -1,6 +1,5 @@
 import ClientDocument from "../models/ClientDocument.js";
 import { generateUploadUrl } from "../utils/s3.js";
-import path from "path";
 import { generateDownloadUrl } from "../utils/s3.js";
 
 const BLOCKED_EXTENSIONS = ["zip"];
@@ -13,15 +12,17 @@ const BLOCKED_MIME_TYPES = [
 export const generateClientUploadUrl = async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { fileName, fileType } = req.body;
+    const { fileName, fileType, title } = req.body;
 
-    if (!fileName || !fileType) {
+    if (!fileName || !fileType || !title) {
       return res.status(400).json({
         success: false,
-        message: "fileName and fileType are required"
+        message: "fileName, fileType and title are required"
       });
     }
-    const extension = path.extname(fileName).replace(".", "").toLowerCase();
+
+    const extension = fileName.split(".").pop().toLowerCase();
+
     if (BLOCKED_EXTENSIONS.includes(extension)) {
       return res.status(400).json({
         success: false,
@@ -29,34 +30,46 @@ export const generateClientUploadUrl = async (req, res) => {
       });
     }
 
-    
     if (BLOCKED_MIME_TYPES.includes(fileType)) {
       return res.status(400).json({
         success: false,
         message: "ZIP files are not allowed"
       });
     }
-
     const { uploadUrl, key } = await generateUploadUrl({
       fileName,
       contentType: fileType,
       clientId
     });
-
-    
-    const document = await ClientDocument.create({
-      clientId,
-      uploadedBy: req.user.id,
+    const documentItem = {
+      title,
       fileName,
       fileType,
-      s3Key: key
-    });
+      s3Key: key,
+      uploadedBy: req.user.id
+    };
+
+   
+    let clientDocument = await ClientDocument.findOne({ clientId });
+
+    if (!clientDocument) {
+      
+      clientDocument = await ClientDocument.create({
+        clientId,
+        documents: [documentItem]
+      });
+    } else {
+      clientDocument.documents.push(documentItem);
+      await clientDocument.save();
+    }
+    const savedDocument =
+      clientDocument.documents[clientDocument.documents.length - 1];
 
     res.status(200).json({
       success: true,
       data: {
         uploadUrl,
-        documentId: document._id,
+        documentId: savedDocument._id,
         s3Key: key
       }
     });
@@ -68,10 +81,10 @@ export const generateClientUploadUrl = async (req, res) => {
     });
   }
 };
+
 export const getClientDocumentViewUrl = async (req, res) => {
   try {
-    const { clientId } = req.params;
-    const { s3Key } = req.query; 
+    const { s3Key } = req.query;
 
     if (!s3Key) {
       return res.status(400).json({
@@ -80,33 +93,43 @@ export const getClientDocumentViewUrl = async (req, res) => {
       });
     }
 
-    
-    const document = await ClientDocument.findOne({
-      s3Key,
-      clientId,
-      status: "UPLOADED"
+    // 1️⃣ Find document inside documents array
+    const clientDocument = await ClientDocument.findOne({
+      "documents.s3Key": s3Key,
+      "documents.status": "UPLOADED"
     });
+
+    if (!clientDocument) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found or deleted"
+      });
+    }
+
+    // 2️⃣ Extract exact document
+    const document = clientDocument.documents.find(
+      (doc) => doc.s3Key === s3Key && doc.status === "UPLOADED"
+    );
 
     if (!document) {
       return res.status(404).json({
         success: false,
-        message: "Document not found or access denied"
+        message: "Document not accessible"
       });
     }
 
-   
+    // 3️⃣ Generate presigned view/download URL
     const viewUrl = await generateDownloadUrl(s3Key);
 
     res.status(200).json({
       success: true,
       data: {
-        s3Key: document.s3Key,
+        documentId: document._id,
         fileName: document.fileName,
         fileType: document.fileType,
         viewUrl
       }
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,

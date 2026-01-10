@@ -10,6 +10,7 @@ import { generateClientUploadUrl } from "../controllers/clientController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import roleMiddleware from "../middlewares/roleMiddleware.js";
 import { getClientDocumentViewUrl } from "../controllers/clientController.js";
+import { getClientDashboardTeam } from "../controllers/clientDashboard.js";
 
 const router = express.Router();
 //router.use(authMiddleware, roleMiddleware("CLIENT"));
@@ -24,11 +25,16 @@ router.post(
   generateClientUploadUrl
 );
 router.get(
-  "/clients/:clientId/documents/view-url",
+  "/clients/documents/view-url",
   authMiddleware,
   roleMiddleware("ADMIN", "EMPLOYEE"),
   getClientDocumentViewUrl
 );
+router.get("/dashboard", 
+  authMiddleware,
+  roleMiddleware("CLIENT"),
+   getClientDashboardTeam);
+
 
 
 //router.delete("/job-search", deleteJobSearchCriteria);
