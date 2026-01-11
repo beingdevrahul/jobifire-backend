@@ -12,15 +12,15 @@ const documentItemSchema = new mongoose.Schema(
       required: true
     },
 
-    fileName: {
-      type: String,
-      required: true
-    },
+    // fileName: {
+    //   type: String,
+    //   required: true
+    // },
 
-    fileType: {
-      type: String,
-      required: true
-    },
+    // fileType: {
+    //   type: String,
+    //   required: true
+    // },
 
     s3Key: {
       type: String,

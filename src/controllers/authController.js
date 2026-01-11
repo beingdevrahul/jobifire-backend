@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+import Client from "../models/Client.js";
 import sendEmail from "../utils/sendEmail.js";
 import jwt from "jsonwebtoken";
 
@@ -46,7 +47,7 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       {
         id: user._id,
-        role: user.role
+        role: user.role,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }

@@ -12,12 +12,23 @@ const BLOCKED_MIME_TYPES = [
 export const generateClientUploadUrl = async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { fileName, fileType, title } = req.body;
+    const { fileName, fileType } = req.body;
 
-    if (!fileName || !fileType || !title) {
+    // if (
+    //   req.user.role === "CLIENT" &&
+    //   (!req.user.clientId ||
+    //     req.user.clientId.toString() !== clientId.toString())
+    // ) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "You cannot upload documents for another client"
+    //   });
+    // }
+
+    if (!fileName || !fileType) {
       return res.status(400).json({
         success: false,
-        message: "fileName, fileType and title are required"
+        message: "fileName and fileType are required"
       });
     }
 
@@ -36,40 +47,17 @@ export const generateClientUploadUrl = async (req, res) => {
         message: "ZIP files are not allowed"
       });
     }
+
     const { uploadUrl, key } = await generateUploadUrl({
       fileName,
       contentType: fileType,
       clientId
     });
-    const documentItem = {
-      title,
-      fileName,
-      fileType,
-      s3Key: key,
-      uploadedBy: req.user.id
-    };
 
-   
-    let clientDocument = await ClientDocument.findOne({ clientId });
-
-    if (!clientDocument) {
-      
-      clientDocument = await ClientDocument.create({
-        clientId,
-        documents: [documentItem]
-      });
-    } else {
-      clientDocument.documents.push(documentItem);
-      await clientDocument.save();
-    }
-    const savedDocument =
-      clientDocument.documents[clientDocument.documents.length - 1];
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: {
         uploadUrl,
-        documentId: savedDocument._id,
         s3Key: key
       }
     });
@@ -81,6 +69,7 @@ export const generateClientUploadUrl = async (req, res) => {
     });
   }
 };
+
 
 export const getClientDocumentViewUrl = async (req, res) => {
   try {
@@ -138,3 +127,50 @@ export const getClientDocumentViewUrl = async (req, res) => {
     });
   }
 };
+
+export const saveClientDocument = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { title, s3Key } = req.body;
+
+    if (!title || !s3Key) {
+      return res.status(400).json({
+        success: false,
+        message: "title and s3Key are required"
+      });
+    }
+
+    const documentItem = {
+      title,
+      s3Key,
+      uploadedBy: req.user.id
+    };
+
+    let clientDocument = await ClientDocument.findOne({ clientId });
+
+    if (!clientDocument) {
+      clientDocument = await ClientDocument.create({
+        clientId,
+        documents: [documentItem]
+      });
+    } else {
+      clientDocument.documents.push(documentItem);
+      await clientDocument.save();
+    }
+
+    const savedDocument =
+      clientDocument.documents[clientDocument.documents.length - 1];
+
+    res.status(201).json({
+      success: true,
+      data: savedDocument
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to save document",
+      error: error.message
+    });
+  }
+};
+

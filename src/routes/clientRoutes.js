@@ -5,7 +5,7 @@ import {
   updateJobSearchCriteria,
  // deleteJobSearchCriteria
 } from "../controllers/jobSearchController.js";
-import { generateClientUploadUrl } from "../controllers/clientController.js";
+import { generateClientUploadUrl, saveClientDocument } from "../controllers/clientController.js";
 
 import authMiddleware from "../middlewares/authMiddleware.js";
 import roleMiddleware from "../middlewares/roleMiddleware.js";
@@ -21,7 +21,7 @@ router.put("/job-search", authMiddleware,roleMiddleware("CLIENT"), updateJobSear
 router.post(
   "/clients/:clientId/documents/upload-url",
   authMiddleware,
-  roleMiddleware("ADMIN", "EMPLOYEE"),
+  roleMiddleware("ADMIN", "EMPLOYEE", "CLIENT"),
   generateClientUploadUrl
 );
 router.get(
@@ -35,7 +35,12 @@ router.get("/dashboard",
   roleMiddleware("CLIENT"),
    getClientDashboardTeam);
 
-
+router.post(
+  "/clients/:clientId/documents",
+  authMiddleware,
+ roleMiddleware("ADMIN", "EMPLOYEE","CLIENT"),
+  saveClientDocument
+);
 
 //router.delete("/job-search", deleteJobSearchCriteria);
 
