@@ -8,7 +8,7 @@ import {
 
 import authMiddleware from "../middlewares/authMiddleware.js";
 import roleMiddleware from "../middlewares/roleMiddleware.js";
-import { getJobSearchCriteriaByClientId } from "../controllers/jobSearchController.js";
+import { getJobSearchCriteriaByClientId, getAllClientDocuments } from "../controllers/jobSearchController.js";
 
 const router = express.Router();
 
@@ -68,6 +68,13 @@ router.get(
   roleMiddleware("ADMIN"),
   getJobSearchCriteriaByClientId
 )
+
+router.get(
+  "/documents/:clientId",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getAllClientDocuments
+);
 
 router.patch(
   "/users/:userId/deactivate",

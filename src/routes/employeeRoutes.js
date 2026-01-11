@@ -5,7 +5,7 @@ import {
   getMyClients,
   getClientDetailsForEmployee
 } from "../controllers/employeeController.js";
-import { getJobSearchCriteriaByClientId } from "../controllers/jobSearchController.js";
+import { getJobSearchCriteriaByClientId, getAllClientDocuments } from "../controllers/jobSearchController.js";
 
 const router = express.Router();
 
@@ -29,6 +29,13 @@ router.get(
   authMiddleware,
   roleMiddleware("EMPLOYEE"),
   getJobSearchCriteriaByClientId
+);
+
+router.get(
+  "/documents/:clientId",
+  authMiddleware,
+  roleMiddleware("EMPLOYEE"),
+  getAllClientDocuments
 );
 
 

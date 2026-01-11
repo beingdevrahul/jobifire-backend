@@ -1,5 +1,6 @@
 import JobSearchCriteria from "../models/JobCriteria.js";
 import Client from "../models/Client.js";
+import ClientDocument from "../models/ClientDocument.js";
 
 
 export const createJobSearchCriteria = async (req, res) => {
@@ -76,6 +77,7 @@ export const getJobSearchCriteriaByClientId = async (req, res) => {
     const { clientId } = req.params;
     const { id: requesterId, role } = req.user;
 
+
    
     if (role === "EMPLOYEE") {
       const client = await Client.findById(clientId);
@@ -85,6 +87,9 @@ export const getJobSearchCriteriaByClientId = async (req, res) => {
           message: "Client not found"
         });
       }
+       console.log("assignedEmployee:", client.assignedEmployee.toString());
+console.log("requesterId:", requesterId);
+console.log("types:", typeof requesterId);
 
       if (
         !client.assignedEmployee ||
@@ -106,6 +111,66 @@ export const getJobSearchCriteriaByClientId = async (req, res) => {
 
     res.status(200).json({
       data: criteria
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
+
+export const getAllClientDocuments = async (req, res) => {
+  try {
+    console.log("🔥 Controller hit:", req.originalUrl);
+console.log("🔥 req.user:", req.user);
+
+    const { clientId } = req.params;
+    const { id: requesterId, role } = req.user;
+
+    
+    if (role === "EMPLOYEE") {
+      const client = await Client.findById(clientId);
+
+      if (!client) {
+        return res.status(404).json({
+          message: "Client not found"
+        });
+      }
+
+     
+      if (
+        !client.assignedEmployee ||
+        client.assignedEmployee.toString() !== requesterId
+      ) {
+        return res.status(403).json({
+          message: "You are not assigned to this client"
+        });
+      }
+    }
+
+    
+    const clientDocuments = await ClientDocument.findOne({ clientId })
+      .populate("clientId", "name email")
+      .populate("documents.uploadedBy", "name email");
+
+    if (!clientDocuments || clientDocuments.documents.length === 0) {
+      return res.status(404).json({
+        message: "No documents found for this client"
+      });
+    }
+
+    
+    const activeDocuments = clientDocuments.documents.filter(
+      doc => doc.status === "UPLOADED"
+    );
+
+    res.status(200).json({
+      message: "Documents retrieved successfully",
+      data: {
+        clientId: clientDocuments.clientId,
+        totalDocuments: activeDocuments.length,
+        documents: activeDocuments
+      }
     });
   } catch (error) {
     res.status(500).json({
