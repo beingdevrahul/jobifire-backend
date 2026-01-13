@@ -3,7 +3,7 @@ import User from "../models/User.js";
 import Client from "../models/Client.js";
 import sendEmail from "../utils/sendEmail.js";
 import Employee from "../models/Employee.js";
-import { resetPassword } from "./authController.js";
+
 
 export const createClient = async (req, res) => {
   try {
@@ -132,7 +132,14 @@ export const resendResetLink = async (req, res) => {
 
 export const createEmployee = async (req, res) => {
   try {
-    const { firstName, lastName, email, phone } = req.body;
+    const { firstName, lastName, email, phone , employeeRole} = req.body;
+
+    const allowedRoles=["JCR Search","Resume Writer","Counsellor"];
+    if(!employeeRole || !allowedRoles.includes(employeeRole)){
+      return res.status(400).json({
+        message:"Invalid employee role"
+      });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -147,7 +154,8 @@ export const createEmployee = async (req, res) => {
       firstName,
       lastName,
       phone,
-      email
+      email,
+      employeeRole
     });
     
 
@@ -236,7 +244,7 @@ export const getEmployees = async (req, res) => {
         match: userFilter,
         select: "email role status resetPasswordToken"
       })
-      .select("firstName lastName phone userId")
+      .select("firstName lastName phone employeeRole userId")
       .sort({ createdAt: -1 });
 
     const formatted = employees
@@ -247,6 +255,7 @@ export const getEmployees = async (req, res) => {
         email: emp.userId.email,
         phone: emp.phone,
         role: emp.userId.role,
+        employeeRole: emp.employeeRole,
         status: emp.userId.status,
         resetPasswordToken: emp.userId.resetPasswordToken
       }));
@@ -260,6 +269,51 @@ export const getEmployees = async (req, res) => {
     res.status(500).json({
       message: "Server error",
       error: err.message
+    });
+  }
+};
+
+export const updateEmployeeRole=async(req,res)=>{
+  try{
+    const {employeeId} = req.params;
+    const {employeeRole} =req.body;
+
+   const allowedRoles=["JCR Search","Resume Writer","Counsellor"];
+    if(!employeeRole || !allowedRoles.includes(employeeRole)){
+      return res.status(400).json({
+        success:false,
+        message:"Invalid employee role"
+      });
+    }
+
+    const employee =await Employee.findOne({userId:employeeId});
+    
+    if(!employee){
+      return res.status(404).json({
+        success:false,
+        message:"Employee not found"
+      });
+    }
+
+    employee.employeeRole=employeeRole;
+    await employee.save();
+
+    res.status(200).json({
+      success:true,
+      message:"Employee role Updated",
+      data:{
+        _id: employee.userId,
+        name: `${employee.firstName} ${employee.lastName}`,
+        email: employee.email,
+        employeeRole: employee.employeeRole
+      }
+    });
+  }
+  catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update employee role",
+      error: error.message
     });
   }
 };

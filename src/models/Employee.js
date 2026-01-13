@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const employeeSchema = new mongoose.Schema(
   {
@@ -30,6 +31,11 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       required: true,
       lowercase: true
+    },
+    employeeRole:{
+      type: String,
+      enum:["JCR Search","Resume Writer","Counsellor"],
+      required:true
     }
   },
   { timestamps: true }
