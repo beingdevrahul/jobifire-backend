@@ -36,10 +36,22 @@ const clientSchema = new mongoose.Schema(
       required: true
     },
 
-    assignedEmployee: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee",
-      required: true
+     assignedEmployees: {
+      jcrSearch: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee",
+        required: true
+      },
+      resumeWriter: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee",
+        required: true
+      },
+      counsellor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee",
+        required: true
+      }
     },
 
     timeZone: {

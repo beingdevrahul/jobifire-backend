@@ -16,8 +16,40 @@ export const createClient = async (req, res) => {
       state,
       timeZone,
       gender,
-      assignedEmployee
+      assignedEmployees 
     } = req.body;
+
+    
+    if (!assignedEmployees || 
+        !assignedEmployees.jcrSearch || 
+        !assignedEmployees.resumeWriter || 
+        !assignedEmployees.counsellor) {
+      return res.status(400).json({ 
+        message: "All three employee roles must be assigned (JCR Search, Resume Writer, Counsellor)" 
+      });
+    }
+
+    
+    const jcrSearchEmployee = await Employee.findById(assignedEmployees.jcrSearch);
+    if (!jcrSearchEmployee || jcrSearchEmployee.employeeRole !== "JCR Search") {
+      return res.status(400).json({ 
+        message: "Invalid JCR Search employee" 
+      });
+    }
+
+    const resumeWriterEmployee = await Employee.findById(assignedEmployees.resumeWriter);
+    if (!resumeWriterEmployee || resumeWriterEmployee.employeeRole !== "Resume Writer") {
+      return res.status(400).json({ 
+        message: "Invalid Resume Writer employee" 
+      });
+    }
+
+    const counsellorEmployee = await Employee.findById(assignedEmployees.counsellor);
+    if (!counsellorEmployee || counsellorEmployee.employeeRole !== "Counsellor") {
+      return res.status(400).json({ 
+        message: "Invalid Counsellor employee" 
+      });
+    }
 
     
     const existingUser = await User.findOne({ email });
@@ -25,13 +57,13 @@ export const createClient = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-   
+    
     const user = await User.create({
       email,
       role: "CLIENT"
     });
 
-    
+   
     const client = await Client.create({
       firstName,
       lastName,
@@ -41,33 +73,30 @@ export const createClient = async (req, res) => {
       state,
       timeZone,
       gender,
-      assignedEmployee
+      assignedEmployees: {
+        jcrSearch: assignedEmployees.jcrSearch,
+        resumeWriter: assignedEmployees.resumeWriter,
+        counsellor: assignedEmployees.counsellor
+      }
     });
 
     
     const token = crypto.randomBytes(32).toString("hex");
-    //const hashedToken = crypto
-      // .createHash("sha256")
-      // .update(token)
-      // .digest("hex");
-
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 7 * 24 * 60 * 60 * 1000;
     await user.save();
 
-    //sendResetEmail
-    const resetUrl=`${process.env.FRONTEND_URL}/reset-password/?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/?token=${token}`;
 
     await sendEmail({
-        to: user.email,
-        subject: "Reset Your Password",
-        html: `
+      to: user.email,
+      subject: "Reset Your Password",
+      html: `
         <p>You have been added as a client.</p>
         <p>Click below to set your password (valid for 7 days):</p>
         <a href="${resetUrl}">${resetUrl}</a>
       `
-
-    })
+    });
 
     res.status(201).json({
       message: "Client created and reset link sent",
@@ -228,7 +257,7 @@ export const resendEmployeeInvite=async(req,res)=>{
 };
 export const getEmployees = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, employeeRole } = req.query;
 
     const userFilter = {
       role: "EMPLOYEE"
@@ -238,7 +267,13 @@ export const getEmployees = async (req, res) => {
       userFilter.status = status.toUpperCase();
     }
 
-    const employees = await Employee.find()
+    const employeeFilter = {};
+
+    if (employeeRole && employeeRole !== "ALL") {
+      employeeFilter.employeeRole = employeeRole;
+    }
+
+    const employees = await Employee.find(employeeFilter)
       .populate({
         path: "userId",
         match: userFilter,
@@ -272,7 +307,6 @@ export const getEmployees = async (req, res) => {
     });
   }
 };
-
 export const updateEmployeeRole=async(req,res)=>{
   try{
     const {employeeId} = req.params;
@@ -347,6 +381,30 @@ export const getAllClients = async (req, res) => {
         $unwind: "$clientProfile"
       },
       {
+        $lookup: {
+          from: "employees",
+          localField: "clientProfile.assignedEmployees.jcrSearch",
+          foreignField: "_id",
+          as: "jcrSearchEmployee"
+        }
+      },
+      {
+        $lookup: {
+          from: "employees",
+          localField: "clientProfile.assignedEmployees.resumeWriter",
+          foreignField: "_id",
+          as: "resumeWriterEmployee"
+        }
+      },
+      {
+        $lookup: {
+          from: "employees",
+          localField: "clientProfile.assignedEmployees.counsellor",
+          foreignField: "_id",
+          as: "counsellorEmployee"
+        }
+      },
+      {
         $project: {
           _id: 1,
           email: 1,
@@ -364,9 +422,57 @@ export const getAllClients = async (req, res) => {
           state: "$clientProfile.state",
           timeZone: "$clientProfile.timeZone",
           gender: "$clientProfile.gender",
-          assignedEmployee: "$clientProfile.assignedEmployee",
+          assignedEmployees: {
+            jcrSearch: {
+              $arrayElemAt: [
+                {
+                  $map: {
+                    input: "$jcrSearchEmployee",
+                    as: "emp",
+                    in: {
+                      _id: "$$emp._id",
+                      name: { $concat: ["$$emp.firstName", " ", "$$emp.lastName"] },
+                      email: "$$emp.email"
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            resumeWriter: {
+              $arrayElemAt: [
+                {
+                  $map: {
+                    input: "$resumeWriterEmployee",
+                    as: "emp",
+                    in: {
+                      _id: "$$emp._id",
+                      name: { $concat: ["$$emp.firstName", " ", "$$emp.lastName"] },
+                      email: "$$emp.email"
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            counsellor: {
+              $arrayElemAt: [
+                {
+                  $map: {
+                    input: "$counsellorEmployee",
+                    as: "emp",
+                    in: {
+                      _id: "$$emp._id",
+                      name: { $concat: ["$$emp.firstName", " ", "$$emp.lastName"] },
+                      email: "$$emp.email"
+                    }
+                  }
+                },
+                0
+              ]
+            }
+          },
           resetPasswordToken: 1,
-         
           createdAt: 1
         }
       },
@@ -396,7 +502,6 @@ export const getClientById = async (req, res) => {
   try {
     const { clientId } = req.params;
 
-    
     const user = await User.findOne({
       _id: clientId,
       role: "CLIENT"
@@ -409,10 +514,22 @@ export const getClientById = async (req, res) => {
       });
     }
 
-    
     const clientProfile = await Client.findOne({
       email: user.email
-    });
+    }).populate([
+      {
+        path: "assignedEmployees.jcrSearch",
+        select: "firstName lastName email employeeRole"
+      },
+      {
+        path: "assignedEmployees.resumeWriter",
+        select: "firstName lastName email employeeRole"
+      },
+      {
+        path: "assignedEmployees.counsellor",
+        select: "firstName lastName email employeeRole"
+      }
+    ]);
 
     if (!clientProfile) {
       return res.status(404).json({
@@ -421,7 +538,6 @@ export const getClientById = async (req, res) => {
       });
     }
 
-    
     res.status(200).json({
       success: true,
       data: {
@@ -435,7 +551,26 @@ export const getClientById = async (req, res) => {
         state: clientProfile.state,
         timeZone: clientProfile.timeZone,
         gender: clientProfile.gender,
-        assignedEmployee: clientProfile.assignedEmployee,
+        assignedEmployees: {
+          jcrSearch: {
+            _id: clientProfile.assignedEmployees.jcrSearch._id,
+            name: `${clientProfile.assignedEmployees.jcrSearch.firstName} ${clientProfile.assignedEmployees.jcrSearch.lastName}`,
+            email: clientProfile.assignedEmployees.jcrSearch.email,
+            role: clientProfile.assignedEmployees.jcrSearch.employeeRole
+          },
+          resumeWriter: {
+            _id: clientProfile.assignedEmployees.resumeWriter._id,
+            name: `${clientProfile.assignedEmployees.resumeWriter.firstName} ${clientProfile.assignedEmployees.resumeWriter.lastName}`,
+            email: clientProfile.assignedEmployees.resumeWriter.email,
+            role: clientProfile.assignedEmployees.resumeWriter.employeeRole
+          },
+          counsellor: {
+            _id: clientProfile.assignedEmployees.counsellor._id,
+            name: `${clientProfile.assignedEmployees.counsellor.firstName} ${clientProfile.assignedEmployees.counsellor.lastName}`,
+            email: clientProfile.assignedEmployees.counsellor.email,
+            role: clientProfile.assignedEmployees.counsellor.employeeRole
+          }
+        },
         createdAt: user.createdAt
       }
     });
