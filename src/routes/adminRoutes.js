@@ -4,7 +4,7 @@ import {
   resendResetLink,
   createEmployee,
   resendEmployeeInvite,getEmployees,getAllClients, getClientById,deactivateUser,
-  updateEmployeeRole
+  updateEmployeeRole,updateClientEmployees
 } from "../controllers/adminController.js";
 
 import authMiddleware from "../middlewares/authMiddleware.js";
@@ -89,6 +89,13 @@ router.patch(
   roleMiddleware("ADMIN"),
   updateEmployeeRole
 )
+
+router.patch(
+  "/clients/:clientId/employees",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  updateClientEmployees
+);
 
 
 

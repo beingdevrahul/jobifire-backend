@@ -631,3 +631,121 @@ export const deactivateUser = async (req, res) => {
   }
 };
 
+export const updateClientEmployees = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { assignedEmployees } = req.body;
+
+    if (!assignedEmployees || 
+        (!assignedEmployees.jcrSearch && 
+         !assignedEmployees.resumeWriter && 
+         !assignedEmployees.counsellor)) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one employee assignment must be provided"
+      });
+    }
+
+    
+    const client = await Client.findById(clientId);
+
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: "Client not found"
+      });
+    }
+
+   
+    if (assignedEmployees.jcrSearch) {
+      const jcrSearchEmployee = await Employee.findById(assignedEmployees.jcrSearch);
+      if (!jcrSearchEmployee || jcrSearchEmployee.employeeRole !== "JCR Search") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JCR Search employee"
+        });
+      }
+      client.assignedEmployees.jcrSearch = assignedEmployees.jcrSearch;
+    }
+
+  
+    if (assignedEmployees.resumeWriter) {
+      const resumeWriterEmployee = await Employee.findById(assignedEmployees.resumeWriter);
+      if (!resumeWriterEmployee || resumeWriterEmployee.employeeRole !== "Resume Writer") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Resume Writer employee"
+        });
+      }
+      client.assignedEmployees.resumeWriter = assignedEmployees.resumeWriter;
+    }
+
+   
+    if (assignedEmployees.counsellor) {
+      const counsellorEmployee = await Employee.findById(assignedEmployees.counsellor);
+      if (!counsellorEmployee || counsellorEmployee.employeeRole !== "Counsellor") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Counsellor employee"
+        });
+      }
+      client.assignedEmployees.counsellor = assignedEmployees.counsellor;
+    }
+
+    await client.save();
+
+   
+    await client.populate([
+      {
+        path: "assignedEmployees.jcrSearch",
+        select: "firstName lastName email employeeRole"
+      },
+      {
+        path: "assignedEmployees.resumeWriter",
+        select: "firstName lastName email employeeRole"
+      },
+      {
+        path: "assignedEmployees.counsellor",
+        select: "firstName lastName email employeeRole"
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Client employees updated successfully",
+      data: {
+        _id: client._id,
+        name: `${client.firstName} ${client.lastName}`,
+        email: client.email,
+        assignedEmployees: {
+          jcrSearch: {
+            _id: client.assignedEmployees.jcrSearch._id,
+            name: `${client.assignedEmployees.jcrSearch.firstName} ${client.assignedEmployees.jcrSearch.lastName}`,
+            email: client.assignedEmployees.jcrSearch.email,
+            role: client.assignedEmployees.jcrSearch.employeeRole
+          },
+          resumeWriter: {
+            _id: client.assignedEmployees.resumeWriter._id,
+            name: `${client.assignedEmployees.resumeWriter.firstName} ${client.assignedEmployees.resumeWriter.lastName}`,
+            email: client.assignedEmployees.resumeWriter.email,
+            role: client.assignedEmployees.resumeWriter.employeeRole
+          },
+          counsellor: {
+            _id: client.assignedEmployees.counsellor._id,
+            name: `${client.assignedEmployees.counsellor.firstName} ${client.assignedEmployees.counsellor.lastName}`,
+            email: client.assignedEmployees.counsellor.email,
+            role: client.assignedEmployees.counsellor.employeeRole
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update client employees",
+      error: error.message
+    });
+  }
+};
+
